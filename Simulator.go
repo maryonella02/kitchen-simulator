@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"sync"
 	"time"
 )
 
 type Order struct {
 	ID         int   `json:"id"`
 	Items      []int `json:"items"`
+	TableID    int   `json:"table_id"`
+	WaiterID   int   `json:"waiter_id"`
 	Priority   int   `json:"priority"`
 	MaxWait    int   `json:"max_wait"`
 	PickUpTime int64 `json:"pick_up_time"`
@@ -20,6 +21,8 @@ type Order struct {
 type ReadyOrder struct {
 	ID          int   `json:"id"`
 	Items       []int `json:"items"`
+	TableID     int   `json:"table_id"`
+	WaiterID    int   `json:"waiter_id"`
 	Priority    int   `json:"priority"`
 	MaxWait     int   `json:"max_wait"`
 	PickUpTime  int64 `json:"pick_up_time"`
@@ -27,6 +30,25 @@ type ReadyOrder struct {
 }
 
 func main() {
+	go func() {
+		for {
+			go func() {
+				url := "http://localhost:8081/test"
+				req, err := http.NewRequest("GET", url, nil)
+				client := &http.Client{}
+				resp, err := client.Do(req)
+				if err != nil {
+					print("skip the error")
+				} else {
+					defer resp.Body.Close()
+					fmt.Println("Request sent")
+				}
+
+			}()
+			time.Sleep(time.Second)
+		}
+	}()
+
 	http.HandleFunc("/order", HandleRequest)
 	log.Fatal(http.ListenAndServe(":8082", nil))
 }
@@ -40,21 +62,11 @@ func HandleRequest(rw http.ResponseWriter, req *http.Request) {
 	}
 	log.Println(order)
 	fmt.Println("Request Handled")
-	var wg sync.WaitGroup
-	for i := 1; i <= 1000; i++ {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-			worker(order)
-		}()
-	}
-	wg.Wait()
+	worker(order)
 }
 
 func worker(order Order) {
 	request := getJsonRequest(order)
-	time.Sleep(time.Second)
 	makeRequest(request)
 
 }
@@ -64,6 +76,8 @@ func getJsonRequest(order Order) []byte {
 		Items:       order.Items,
 		Priority:    order.Priority,
 		MaxWait:     order.MaxWait,
+		WaiterID:    order.WaiterID,
+		TableID:     order.TableID,
 		PickUpTime:  order.PickUpTime,
 		CookingTime: getCookingTime(order)}
 	b, err := json.Marshal(readyOrder)
