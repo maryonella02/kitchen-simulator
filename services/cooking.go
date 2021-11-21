@@ -90,21 +90,32 @@ func makeReceiptList(order models.Order) []models.Dish {
 func StartPrepareOrder(cook models.Cook, order models.Order, foodReceipts []models.Dish) {
 	fmt.Println("Starting prepare order ", order.ID)
 	startPreparationTime := time.Now()
+	guard := make(chan struct{}, cook.Proficiency) // make sure that only x gouroutines are activy preparing food
 
 	for _, food := range foodReceipts {
-		fmt.Println("Start prepared food id with name", food.ID, food.Name)
-		switch food.CookingApparatus {
-		case models.STOVE:
-			prepareUsingFreeApparat(ApparatusList.Stoves, food.PreparationTime)
-		case models.OVEN:
-			prepareUsingFreeApparat(ApparatusList.Ovens, food.PreparationTime)
-		default:
-			time.Sleep(time.Duration(food.PreparationTime) * time.Millisecond)
-		}
+		guard <- struct{}{}
+		go func(f models.Dish) {
+			prepareFood(f)
+			<-guard
+		}(food)
+
 	}
 	elapsed := time.Since(startPreparationTime).Milliseconds()
 	fmt.Println("Done ", order.ID)
 	sendPreparedOrder(order, int(elapsed))
+}
+
+func prepareFood(food models.Dish) {
+	fmt.Println("Start prepared food id with name", food.ID, food.Name)
+	switch food.CookingApparatus {
+	case models.STOVE:
+		prepareUsingFreeApparat(ApparatusList.Stoves, food.PreparationTime)
+	case models.OVEN:
+		prepareUsingFreeApparat(ApparatusList.Ovens, food.PreparationTime)
+	default:
+		time.Sleep(time.Duration(food.PreparationTime) * time.Millisecond)
+	}
+	fmt.Println("Food prepared", food.ID, food.Name)
 }
 
 func prepareUsingFreeApparat(apparats chan models.Apparat, preparationTime int) {
