@@ -7,22 +7,14 @@ import (
 	"kitchen-simulator/models"
 	"log"
 	"os"
-	"time"
 )
 
-func GetUnixTimestamp() int64 {
-	now := time.Now()
-	sec := now.Unix()
-	return sec
-}
-
 func ReadCooks(filename string) models.Cooks {
-
 	jsonFile, err := os.Open(filename)
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Printf("Successfully Opened %s \n", filename)
+	log.Printf("Successfully Opened %s \n", filename)
 
 	defer jsonFile.Close()
 
@@ -42,9 +34,9 @@ func ReadMapOfMenus(filename string) map[int]models.Dish {
 
 	jsonFile, err := os.Open(filename)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
-	fmt.Printf("Successfully Opened %s \n", filename)
+	log.Printf("Successfully Opened %s \n", filename)
 
 	defer jsonFile.Close()
 
@@ -70,17 +62,5 @@ func ConvertListOfDishesToMap(dishes models.Dishes) map[int]models.Dish {
 }
 
 func RemoveFromSliceByIndex(slice []models.Order, s int) []models.Order {
-	return append(slice[:s], slice[s+1:]...)
-}
-
-func RemoveFromSliceByOrderID(slice []models.Order, id int) []models.Order {
-	s := -1
-	for idx, order := range slice {
-		if order.ID == id {
-			s = idx
-			break
-		}
-	}
-
 	return append(slice[:s], slice[s+1:]...)
 }

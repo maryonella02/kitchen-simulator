@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"kitchen-simulator/models"
 	"kitchen-simulator/utils"
+	"log"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -27,25 +29,24 @@ func convertOrderToReadyOrder(order models.Order, cookingTime int) []byte {
 	}
 	b, err := json.Marshal(readyOrder)
 	if err != nil {
-		fmt.Printf("Error: %s", err)
+		log.Printf("Error: %s", err)
 	}
 	return b
 }
 
 func StartServingDishes(cook models.Cook) {
-	fmt.Println("Received name ", cook.Name)
+	log.Println("Received name ", cook.Name)
 	for {
 		time.Sleep(time.Second)
-		fmt.Println("Before lock")
+		log.Println("Before lock")
 		Orders.Lock()
-		fmt.Println("As cook ", cook.Name, "I try to find some orders")
+		log.Println("As cook ", cook.Name, "I try to find some orders")
 		if len(Orders.AllOrders) > 0 {
-			//TODO: Implement finding food by his rank
 			for idx, order := range Orders.AllOrders {
 				receiptList, canCook := CanCookOrder(cook, order)
 				if canCook {
 					Orders.AllOrders = utils.RemoveFromSliceByIndex(Orders.AllOrders, idx)
-					fmt.Println("Unlocked")
+					log.Println("Unlocked")
 					Orders.Unlock()
 					StartPrepareOrder(cook, order, receiptList)
 					break
@@ -54,7 +55,7 @@ func StartServingDishes(cook models.Cook) {
 				}
 			}
 		} else {
-			fmt.Println("There are no orders availalbe")
+			log.Println("There are no orders available")
 			Orders.Unlock()
 		}
 
@@ -83,23 +84,24 @@ func makeReceiptList(order models.Order) []models.Dish {
 		receipt := DishesMenu[foodID]
 		foodReceipts[idx] = receipt
 	}
-
 	return foodReceipts
 }
 
-func StartPrepareOrder(cook models.Cook, order models.Order, foodReceipts []models.Dish) {
+func StartPrepareOrder(cook models.Cook, order models.Order, foodReceipts []models.Dish) { //??
 	fmt.Println("Starting prepare order ", order.ID)
 	startPreparationTime := time.Now()
-	guard := make(chan struct{}, cook.Proficiency) // make sure that only x gouroutines are activy preparing food
-
+	guard := make(chan struct{}, cook.Proficiency) // make sure that only x goroutines are actively preparing food
+	wg := sync.WaitGroup{}
 	for _, food := range foodReceipts {
 		guard <- struct{}{}
+		wg.Add(1)
 		go func(f models.Dish) {
 			prepareFood(f)
 			<-guard
+			wg.Done()
 		}(food)
-
 	}
+	wg.Wait()
 	elapsed := time.Since(startPreparationTime).Milliseconds()
 	fmt.Println("Done ", order.ID)
 	sendPreparedOrder(order, int(elapsed))
@@ -121,23 +123,17 @@ func prepareFood(food models.Dish) {
 func prepareUsingFreeApparat(apparats chan models.Apparat, preparationTime int) {
 	fmt.Println("Before using apparat")
 	freeApparat := <-apparats
-	fmt.Println("Apparat tooked")
+	fmt.Println("Apparat taken")
 	time.Sleep(time.Duration(preparationTime) * time.Millisecond)
 	apparats <- freeApparat
-	fmt.Println("aparat released")
-
+	fmt.Println("Apparat released")
 }
 
 func sendPreparedOrder(order models.Order, cookedTime int) {
 	fmt.Println("Sending order ", order.ID)
 	bytes := convertOrderToReadyOrder(order, cookedTime)
 	makeRequest(bytes)
-	fmt.Println("Sended order ", order.ID)
-	// fmt.Println("Deleting order from lis", order.ID)
-	// Orders.Lock()
-	// utils.RemoveFromSliceByOrderID(Orders.AllOrders, order.ID)
-	// Orders.Unlock()
-
+	fmt.Println("Order sent: ", order.ID)
 }
 func makeRequest(b []byte) {
 	url := "http://localhost:8081/distribution"
