@@ -1,20 +1,26 @@
 {
     "cooks": [
         {
-        "rank": 5,
-        "proficiency": 3,
+        "rank": 3,
+        "proficiency": 4,
         "name": "Gordon Ramsay",
         "catch-phrase": "Hey, panini head, are you listening to me?"
         },
         {
-            "rank": 3,
-            "proficiency": 2,
+            "rank": 2,
+            "proficiency": 3,
             "name": "Doamna Elena",
             "catch-phrase": "Do you have 1 lei rest?"
         },
         {
+            "rank": 2,
+            "proficiency": 2,
+            "name": "KungFu Master",
+            "catch-phrase": "Good fight good night"
+        },
+        {
             "rank": 1,
-            "proficiency": 1,
+            "proficiency": 2,
             "name": "KungFu Master",
             "catch-phrase": "Good fight good night"
         }

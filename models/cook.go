@@ -28,4 +28,3 @@ type CookingApparatusTypes struct {
 	Ovens  string
 	Stoves string
 }
-
